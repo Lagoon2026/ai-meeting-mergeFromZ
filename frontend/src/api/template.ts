@@ -13,7 +13,7 @@
  *   import { listTemplates, getActiveTemplate, activateTemplate, evolveTemplate }
  *   from '../../api/template'
  */
-import { apiClient } from './client'
+import { api } from './client'
 
 // ── 类型定义 ─────────────────────────────────────────────────────────────
 
@@ -38,39 +38,39 @@ export interface MeetingTemplate {
 
 /** 列出所有模板 */
 export function listTemplates() {
-  return apiClient.get<MeetingTemplate[]>('/api/templates')
+  return api.get<MeetingTemplate[]>('/api/templates')
 }
 
 /** 获取当前活跃模板 */
 export function getActiveTemplate() {
-  return apiClient.get<MeetingTemplate | Record<string, never>>('/api/templates/active')
+  return api.get<MeetingTemplate | Record<string, never>>('/api/templates/active')
 }
 
 /** 获取单个模板 */
 export function getTemplate(id: number) {
-  return apiClient.get<MeetingTemplate>(`/api/templates/${id}`)
+  return api.get<MeetingTemplate>(`/api/templates/${id}`)
 }
 
 /** 手动创建模板 */
 export function createTemplate(data: Partial<MeetingTemplate>) {
-  return apiClient.post<MeetingTemplate>('/api/templates', data)
+  return api.post<MeetingTemplate>('/api/templates', data)
 }
 
 /** 激活指定模板 */
 export function activateTemplate(id: number) {
-  return apiClient.post<MeetingTemplate>(`/api/templates/${id}/activate`)
+  return api.post<MeetingTemplate>(`/api/templates/${id}/activate`)
 }
 
 /** 触发后台模板演化 */
 export function evolveTemplate(method: 'user_edit' | 'kb_analysis' | 'combined' = 'combined') {
-  return apiClient.post<{ status: string; method: string; message: string }>(
+  return api.post<{ status: string; method: string; message: string }>(
     `/api/templates/evolve?method=${method}`,
   )
 }
 
 /** 保存用户编辑后的会议纪要（用于模板演化） */
 export function saveEditedMinutes(meetingId: number, editedMinutes: Record<string, unknown>) {
-  return apiClient.put<{ status: string; edited_minutes: Record<string, unknown> }>(
+  return api.put<{ status: string; edited_minutes: Record<string, unknown> }>(
     `/api/meeting/${meetingId}/edited-minutes`,
     { edited_minutes: editedMinutes },
   )
