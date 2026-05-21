@@ -40,6 +40,30 @@ kb-system 仓的:
 - `frontend/Dockerfile` 同理
 - `backend/main.py`、`backend/tasks/__init__.py`、`frontend/src/App.tsx` 的 import 不变 —— 因为 overlay 之后路径和原来一样
 
+## 自动部署(CI)
+
+`from-kb-system` 分支每次 push 会自动触发生产部署:
+
+```
+push → from-kb-system
+   │
+   │  .github/workflows/notify-kb.yml
+   ▼
+repository_dispatch(meeting-updated)→ zhebinliu/knowledge-base
+   │
+   │  knowledge-base/.github/workflows/deploy-meeting.yml
+   ▼
+拉最新 from-kb-system → tsc/build 自检 → build backend + frontend-prod
++ frontend-uat 三镜像推 ghcr → bump kb-system 的 submodule pointer
+→ 部署 PROD(kb.liii.in)+ UAT(uat.tokenwave.cloud),带健康检查 + 失败回滚
+```
+
+**前置配置**:本仓需要一个 secret `KB_DISPATCH_TOKEN` —— 对 `zhebinliu/knowledge-base`
+有 `Contents: write` 权限的 fine-grained PAT。配置:
+```bash
+gh secret set KB_DISPATCH_TOKEN --repo zhebinliu/ai-meeting
+```
+
 ## 历史背景
 
 - main 分支:2026-04-28 之前的独立 FastAPI 服务版本(已废弃,留作备查)
