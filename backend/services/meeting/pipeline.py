@@ -22,6 +22,7 @@ from prompts.meeting import (
     STAKEHOLDER_SYSTEM,
     STAKEHOLDER_USER,
 )
+from services.ai.template_evolver import _build_system_prompt_from_dict
 from services.model_router import model_router
 
 logger = structlog.get_logger()
@@ -103,13 +104,25 @@ _EMPTY_MINUTES = {
 }
 
 
-async def generate_minutes(transcript: str, meeting_title: str = "") -> dict:
-    """从润色后的 transcript 生成结构化纪要。返回 dict。"""
+async def generate_minutes(
+    transcript: str,
+    meeting_title: str = "",
+    template_dict: dict | None = None,
+) -> dict:
+    """从润色后的 transcript 生成结构化纪要。返回 dict。
+
+    Args:
+        transcript: 润色后的转写文本。
+        meeting_title: 会议标题。
+        template_dict: 可选的活跃模板 dict，用于注入 system prompt。
+    """
     if not transcript or not transcript.strip():
         return dict(_EMPTY_MINUTES)
 
+    system_prompt = _build_system_prompt_from_dict(template_dict)
+
     messages = [
-        {"role": "system", "content": MINUTES_SYSTEM},
+        {"role": "system", "content": system_prompt},
         {
             "role": "user",
             "content": MINUTES_USER.format(
@@ -242,11 +255,15 @@ async def run_full_pipeline(
     meeting_id: int,
     meeting_title: str = "",
     kb_docs: list[dict] | None = None,
+    template_dict: dict | None = None,
 ) -> dict:
     """串行 + 并行编排:polish → (minutes ∥ requirements) → stakeholders。
 
     返回 {polished_transcript, meeting_minutes, requirements, stakeholder_map}。
     任何一阶段失败不阻断后续(降级为空结果),由调用方在 DB 里反映 status。
+
+    Args:
+        template_dict: 可选的活跃模板 dict，注入 minutes 生成 prompt。
     """
     logger.info("pipeline_start", meeting_id=meeting_id, in_chars=len(raw_transcript))
 
@@ -258,7 +275,7 @@ async def run_full_pipeline(
         polished = raw_transcript  # 失败时直接用原文
 
     # Step 2 & 3: 并行
-    minutes_task = asyncio.create_task(generate_minutes(polished, meeting_title))
+    minutes_task = asyncio.create_task(generate_minutes(polished, meeting_title, template_dict))
     reqs_task = asyncio.create_task(extract_requirements(polished))
     minutes, requirements = await asyncio.gather(
         minutes_task, reqs_task, return_exceptions=True

@@ -9,18 +9,25 @@
 ```
 backend/
   api/meeting.py            → /app/api/meeting.py
+  api/template.py            → /app/api/template.py     # [新增]模板演化 API
   models/meeting.py         → /app/models/meeting.py
+  models/template.py        → /app/models/template.py   # [新增]模板 ORM
   prompts/meeting.py        → /app/prompts/meeting.py
   tasks/meeting_tasks.py    → /app/tasks/meeting_tasks.py
   services/meeting/         → /app/services/meeting/
     {asr,audio_utils,docx_export,feishu,kb_sync,pipeline,storage}.py
     templates/minutes_template.docx
+  services/ai/              → /app/services/ai/          # [新增]模板演化服务
+    template_evolver.py
+    __init__.py
 
 frontend/src/
   pages/console/                 → frontend/src/pages/console/    (旧 UI)
     ConsoleMeeting{,Detail,New}.tsx
   redesign/console/              → frontend/src/redesign/console/ (新 UI)
     ConsoleMeeting{,Detail,New}.tsx
+  api/                          → frontend/src/api/                # [新增]模板 API
+    template.ts
 ```
 
 ## 运行时依赖(由宿主仓 kb-system 提供)

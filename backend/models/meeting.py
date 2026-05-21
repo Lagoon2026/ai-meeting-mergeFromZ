@@ -52,6 +52,9 @@ class Meeting(Base):
     kb_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     kb_synced_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
+    # 用户手动编辑后的纪要(JSON,用于模板演化)
+    edited_minutes: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+
     # 干系人图谱(JSON {stakeholders, relations, version})
     stakeholder_map: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     stakeholder_kb_doc_id: Mapped[str | None] = mapped_column(String(64), nullable=True)

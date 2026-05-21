@@ -88,6 +88,7 @@ def _meeting_dto(m: Meeting, project_name: Optional[str] = None) -> dict:
         "kb_doc_id": m.kb_doc_id,
         "kb_url": m.kb_url,
         "kb_synced_at": m.kb_synced_at,
+        "edited_minutes": m.edited_minutes,
         "stakeholder_map": m.stakeholder_map,
         "stakeholder_kb_doc_id": m.stakeholder_kb_doc_id,
         "stakeholder_kb_url": m.stakeholder_kb_url,
@@ -340,6 +341,26 @@ async def put_stakeholder_map(
     await session.commit()
     await session.refresh(m)
     return _meeting_dto(m)
+
+
+class EditedMinutesPut(BaseModel):
+    """保存前端编辑后的会议纪要。"""
+    edited_minutes: dict
+
+
+@router.put("/{meeting_id}/edited-minutes")
+async def put_edited_minutes(
+    meeting_id: int,
+    body: EditedMinutesPut,
+    session: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
+):
+    """保存用户手动编辑后的会议纪要，用于模板演化。"""
+    m = await _load_meeting_owned(meeting_id, session, user)
+    m.edited_minutes = body.edited_minutes
+    await session.commit()
+    await session.refresh(m)
+    return {"status": "ok", "edited_minutes": m.edited_minutes}
 
 
 # 2026-05-12:单条 requirement 编辑 + 改名同步
@@ -659,12 +680,23 @@ async def action_summarize(
     user: User = Depends(get_current_user),
 ):
     """仅生成纪要。优先用 polished_transcript,fallback raw。"""
+    from models.template import MeetingTemplate
+    from services.ai.template_evolver import _template_to_dict
     from services.meeting import generate_minutes
     m = await _load_meeting_owned(meeting_id, session, user)
     text = m.polished_transcript or m.raw_transcript
     if not text:
         raise HTTPException(400, "无可用 transcript")
-    minutes = await generate_minutes(text, meeting_title=m.title or "")
+
+    # 读活跃模板
+    template_dict: dict | None = None
+    tpl = (await session.execute(
+        select(MeetingTemplate).where(MeetingTemplate.is_active == True).limit(1)  # noqa: E712
+    )).scalar_one_or_none()
+    if tpl:
+        template_dict = _template_to_dict(tpl)
+
+    minutes = await generate_minutes(text, meeting_title=m.title or "", template_dict=template_dict)
     m.meeting_minutes = minutes
     await session.commit()
     return {"meeting_minutes": minutes}

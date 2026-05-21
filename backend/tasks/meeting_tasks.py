@@ -26,7 +26,9 @@ async def _process_meeting_async(meeting_id: int):
     """执行 AI pipeline 并写回 DB。状态机:processing → completed/failed。"""
     from models import async_session_maker
     from models.meeting import Meeting, Requirement
+    from models.template import MeetingTemplate
     from services._time import utcnow_naive
+    from services.ai.template_evolver import _template_to_dict
     from services.meeting import run_full_pipeline
 
     async with async_session_maker() as session:
@@ -47,6 +49,19 @@ async def _process_meeting_async(meeting_id: int):
         raw = meeting.raw_transcript
         title = meeting.title or ""
 
+        # 读取活跃模板
+        template_dict: dict | None = None
+        try:
+            tpl = (await session.execute(
+                select(MeetingTemplate)
+                .where(MeetingTemplate.is_active == True)  # noqa: E712
+                .limit(1)
+            )).scalar_one_or_none()
+            if tpl:
+                template_dict = _template_to_dict(tpl)
+        except Exception:
+            logger.warning("failed_to_load_template", exc_info=True)
+
     # 跑 pipeline(脱离 session,避免 LLM 长时间持有连接)
     try:
         result = await run_full_pipeline(
@@ -54,6 +69,7 @@ async def _process_meeting_async(meeting_id: int):
             meeting_id=meeting_id,
             meeting_title=title,
             kb_docs=None,  # Block E 接 KB 联动后,这里读 project_id 拉 KB 文档
+            template_dict=template_dict,
         )
     except Exception as e:
         logger.exception("meeting_pipeline_unhandled", meeting_id=meeting_id, error=str(e)[:200])
