@@ -357,7 +357,7 @@ class TemplateEvolver:
             # 去激活当前所有活跃模板
             from sqlalchemy import text as _text
             await db.execute(
-                _text("UPDATE meeting_templates SET is_active = 0 WHERE is_active = 1")
+                _text("UPDATE meeting_templates SET is_active = false WHERE is_active = true")
             )
 
             # 确定下一个版本号

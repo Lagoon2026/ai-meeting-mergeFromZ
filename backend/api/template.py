@@ -141,7 +141,7 @@ async def activate_template(
         raise HTTPException(status_code=404, detail="模板不存在")
 
     await db.execute(
-        _text("UPDATE meeting_templates SET is_active = 0 WHERE is_active = 1")
+        _text("UPDATE meeting_templates SET is_active = false WHERE is_active = true")
     )
     tpl.is_active = True
     await db.commit()
